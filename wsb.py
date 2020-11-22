@@ -18,7 +18,9 @@ def get_client(some_client=SOME_CLIENT):
     if not some_client:
         some_client = praw.Reddit(client_id='oeywuzwXgEQ24w',
                                   client_secret='kcnraVZX__t6pr3oGXeuosnqRFc',
-                                  user_agent='mikeybullputs')
+                                  user_agent='mikeybullputs',
+                                  api_request_delay=0.0)
+        some_client.config
     return some_client
 
 
@@ -53,6 +55,9 @@ def get_date_from_post(p):
     return date.astimezone(est)
 
 
+# json method
+
+
 if __name__ == '__main__':
     # TODO change time_bin to be EST time
     # TODO figure out how to store this data, probably k, v with key=date,value=json of stock values for now?
@@ -78,7 +83,7 @@ if __name__ == '__main__':
             time_bin = f"{date.month}-{date.day}-{date.hour}"
             unfiltered_words[time_bin] += comment.body.split()
             print(f"at: {time_bin} num words: {len(unfiltered_words[time_bin])}", end="\r")
-
+    print("processing in memory now")
     unfiltered_counters = {}
     filtered_counters = {}
     for time_bin in unfiltered_words:
