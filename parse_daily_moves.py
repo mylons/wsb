@@ -1,8 +1,36 @@
+import threading
+from time import sleep
 from typing import List
+from queue import Queue
+import random
 
-from IPython import embed
+INPUT_COMMENTS = Queue()
+OUTPUT_COMMENTS = Queue()
+KEEP_WORKING = True
+
+
+def worker():
+    while KEEP_WORKING:
+        client = get_client()
+        try:
+            item = INPUT_COMMENTS.get(timeout=2)
+        except:
+            break
+        if isinstance(item, MoreComments):
+            handle_more_comments(item)
+        INPUT_COMMENTS.task_done()
+        print(f"INPUT_COMMENTS={INPUT_COMMENTS.unfinished_tasks} OUTPUT_COMMENTS={OUTPUT_COMMENTS.unfinished_tasks}")
+        try:
+            for c in client.submission(id=item).comments:
+                OUTPUT_COMMENTS.put(c.body)
+        except Exception as e:
+            pass
+        sleep(random.randint(0, 5))
+
 from datetime import datetime
-from collections import Counter, defaultdict
+
+from praw.models import MoreComments
+
 from db import Stocks, MOST_COMMON_WORDS
 import praw
 import pytz
@@ -13,7 +41,8 @@ db = Stocks()
 STOCKS = frozenset(db.nyse() + db.amex() + db.nasdaq())
 SPECIAL_CASES = frozenset({'FDs'})
 
-THE_COMMENT = "https://www.reddit.com/r/wallstreetbets/comments/jyjyqt/posted_this_45_days_ago_now_we_have_a_ticker/"
+#THE_COMMENT = "https://www.reddit.com/r/wallstreetbets/comments/jyjyqt/posted_this_45_days_ago_now_we_have_a_ticker/"
+THE_COMMENT = "https://www.reddit.com/r/wallstreetbets/comments/jzqior/what_are_your_moves_tomorrow_november_24_2020/"
 
 
 def get_client(some_client=SOME_CLIENT):
@@ -59,46 +88,49 @@ def get_date_from_post(p):
 
 # json method
 
+def handle_more_comments(more: MoreComments):
+    for comment in more.comments(update=True):
+        if hasattr(comment, "body"):
+            OUTPUT_COMMENTS.put(comment.body)
+            print(f"INPUT_COMMENTS.size {INPUT_COMMENTS.unfinished_tasks} OUTPUT_COMMENTS.size {OUTPUT_COMMENTS.unfinished_tasks}")
+        elif isinstance(comment, MoreComments):
+            INPUT_COMMENTS.put(comment)
+        else:
+            print("wtf")
+
+
+def queue_to_list(q):
+
+    blah = q.get()
+    output = []
+    while blah and q.unfinished_tasks > 0:
+        print(blah)
+        output.append(blah)
+        try:
+            blah = q.get(timeout=1)
+        except:
+            break
+    return output
 
 if __name__ == '__main__':
     # TODO change time_bin to be EST time
     # TODO figure out how to store this data, probably k, v with key=date,value=json of stock values for now?
     # TODO automate running this. sub-tasks: detect duplicate comments
 
-    wsb = get_client().subreddit('wallstreetbets')
+    for c in get_client().submission(url=THE_COMMENT).comments.list():
+        if isinstance(c, MoreComments):
+            INPUT_COMMENTS.put(c)
+        else:
+            OUTPUT_COMMENTS.put(c.body)
 
-    word_counter = Counter()
-    words = defaultdict(list)
-    unfiltered_words = defaultdict(list)
+    threads = []
+    for i in range(32):
+        threads.append(threading.Thread(target=worker, daemon=True).start())
 
-    start = datetime.now()
-    submission = get_client().submission(url=THE_COMMENT)
-    comments = [c for c in submission.comments]
-    print(comments)
-    """
-    for post in wsb.hot(limit=200):
-        # post object
-        date = get_date_from_post(post)
-        time_bin = f"{date.month}-{date.day}-{date.hour}"
-        unfiltered_words[time_bin] += post.title.split() + post.selftext.split()
-        print(f"at: {time_bin} num words: {len(unfiltered_words[time_bin])}", end="\r")
-        client = get_client()
-        post.comments.replace_more(limit=None)
-        for comment in post.comments.list():
-            date = get_date_from_post(comment)
-            time_bin = f"{date.month}-{date.day}-{date.hour}"
-            unfiltered_words[time_bin] += comment.body.split()
-            print(f"at: {time_bin} num words: {len(unfiltered_words[time_bin])}", end="\r")
-    print("processing in memory now")
-    unfiltered_counters = {}
-    filtered_counters = {}
-    for time_bin in unfiltered_words:
-        unfiltered_counters[time_bin] = Counter(unfiltered_words[time_bin])
-        filtered_counters[time_bin] = Counter([w.lower() for w in filter_words(unfiltered_words[time_bin])])
-    stop = datetime.now()
-    print(f"start: {start}   stop: {stop}     stop - start: {stop - start}")
-    """
+    INPUT_COMMENTS.join()
+    import json
+    output_json = json.dumps(queue_to_list(OUTPUT_COMMENTS))
+    with open('the_moves.json', 'w') as f:
+        f.write(output_json)
 
-    """
-    special cases: FDs
-    """
+    print(len(output_json))

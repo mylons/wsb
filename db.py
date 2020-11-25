@@ -20,6 +20,22 @@ class Stocks:
         return [q[0] for q in self._query('select Symbol from nasdaq')]
 
 
+from sqlalchemy import create_engine, Column, Integer, String, Text
+from sqlalchemy.ext.declarative import declarative_base
+"""
+Base = declarative_base()
+engine = create_engine('sqlite:///:memory:', echo=True)
+
+
+class Posts(Base):
+    __tablename__ = 'posts'
+    id = Column(Integer, primary_key=True)
+    post_id = Column(String)
+    content = Column(Text)
+
+
+Base.metadata.create_all(engine)
+"""
 MOST_COMMON_WORDS = frozenset({'good',
                                'Best',
                                'Rs',

@@ -16,6 +16,9 @@ pandas-datareader = "*"
 praw = "*"
 matplotlib = "*"
 pytz = "*"
+fsspec = "*"
+sqlalchemy = {index = "https://mike.lyons%40ridgelineapps.com:AKCp5e312pphkfPBmdEt4ZTmfncERxnTUX1nNgP4wWQNpb6W9GjsEizf3AMXCHtsFM87g1KHB@ridgelineapps.jfrog.io/ridgelineapps/api/pypi/pypi-remote/simple",version = "*"}
+nltk = {index = "https://mike.lyons%40ridgelineapps.com:AKCp5e312pphkfPBmdEt4ZTmfncERxnTUX1nNgP4wWQNpb6W9GjsEizf3AMXCHtsFM87g1KHB@ridgelineapps.jfrog.io/ridgelineapps/api/pypi/pypi-remote/simple",version = "*"}
 
 [requires]
-python_version = "3.9"
+python_version = "3.8"
